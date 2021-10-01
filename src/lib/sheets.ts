@@ -61,17 +61,30 @@ export async function initDoc(id: string, credentialsPath?: string) {
   return doc;
 }
 
-export async function getSheetsForDoc(id: string, credentialsPath?: string) {
+export async function getSheetsForDoc({
+  id,
+  credentialsPath,
+  dryRun,
+}: {
+  id: string;
+  credentialsPath?: string;
+  dryRun: boolean;
+}) {
   const doc = await initDoc(id, credentialsPath);
-  return await getSheets(doc);
+  return await getSheets(doc, dryRun);
 }
 
-export async function getSheets(doc: GoogleSpreadsheet) {
+export async function getSheets(doc: GoogleSpreadsheet, dryRun?: boolean) {
   const currentMonthTitle = getDateTitle(new Date());
   const previousMonth = new Date();
   previousMonth.setMonth(previousMonth.getMonth() - 1);
   const previousMonthTitle = getDateTitle(previousMonth);
   const previousMonthSheet = await loadSheetByTitle(doc, previousMonthTitle);
+
+  if (dryRun) {
+    return [previousMonthSheet];
+  }
+
   const newMonthSheet = await loadNewSheet(doc, currentMonthTitle);
 
   return [previousMonthSheet, newMonthSheet];
@@ -81,11 +94,11 @@ export async function loadSheetByTitle(doc: GoogleSpreadsheet, title: string) {
   const sheet = doc.sheetsByTitle[title];
 
   console.log(`Evaluating ${sheet.title} ...`);
-  console.log(
-    "Loading cell ranges",
-    [SCHEDULE_RANGE, MOVIE_PICKS_RANGE],
-    "..."
-  );
+  // console.log(
+  //   "Loading cell ranges",
+  //   [SCHEDULE_RANGE, MOVIE_PICKS_RANGE],
+  //   "..."
+  // );
 
   await sheet.loadCells([SCHEDULE_RANGE, MOVIE_PICKS_RANGE]);
   return sheet;

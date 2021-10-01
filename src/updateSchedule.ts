@@ -6,11 +6,16 @@ import {
 } from "./lib/utils";
 import { Person, UpdateArgs } from "./sharedTypes";
 
-export async function updateSchedule({ credentialsPath, sheetId }: UpdateArgs) {
-  const [previousMonthSheet, newMonthSheet] = await getSheetsForDoc(
-    sheetId,
-    credentialsPath
-  );
+export async function updateSchedule({
+  credentialsPath,
+  sheetId,
+  dryRun,
+}: UpdateArgs) {
+  const [previousMonthSheet, newMonthSheet] = await getSheetsForDoc({
+    id: sheetId,
+    credentialsPath,
+    dryRun,
+  });
 
   // get previous month rows
   const previousRows = await previousMonthSheet.getRows({
@@ -35,13 +40,28 @@ export async function updateSchedule({ credentialsPath, sheetId }: UpdateArgs) {
     };
   });
 
+  console.log(`\nREORDERING...\n`);
+
   // reorder MCs based on greened status
-  const reorderedMcs = reorderByGreenStatus(people, months.length - 1);
+  const reorderedPeople = reorderByGreenStatus(people, months);
+
+  console.log(
+    `\n\nNOTE: ${reorderedPeople[1]} IS UP NEXT, WITH ${reorderedPeople[2]} TENTATIVELY AFTER THAT!\n\n`
+  );
+
+  if (dryRun) {
+    console.log("Dry run complete! (No updates performed)");
+    return;
+  }
+
+  if (!newMonthSheet) {
+    throw new Error("Missing new month sheet, not created for some reason");
+  }
 
   // make new rows
   const newRows = months.map((month, i) => ({
     Month: month,
-    MC: reorderedMcs[i],
+    MC: reorderedPeople[i],
   }));
 
   // add new rows to new sheet

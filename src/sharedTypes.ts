@@ -2,6 +2,7 @@ export interface UpdateArgs {
   credentialsPath?: string;
   sheetId: string;
   noAuth?: boolean;
+  dryRun?: boolean;
 }
 
 export interface Person {

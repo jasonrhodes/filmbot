@@ -5,11 +5,10 @@ import { updateSchedule } from "../src/updateSchedule";
 type CLIArgs = {
   credsPath?: string;
   sheetId: string;
+  dryRun: boolean;
 };
 
 const argv = yargs(hideBin(process.argv)).argv as unknown as CLIArgs;
-
-console.log(Object.keys(argv));
 
 if (!argv.sheetId) {
   console.error("sheetId is a required parameter");
@@ -19,4 +18,5 @@ if (!argv.sheetId) {
 updateSchedule({
   credentialsPath: argv.credsPath,
   sheetId: argv.sheetId,
+  dryRun: !!argv.dryRun,
 });
