@@ -45,12 +45,10 @@ export async function updateSchedule({
   // reorder MCs based on greened status
   const reorderedPeople = reorderByGreenStatus(people, months);
 
-  console.log(
-    `\n\nNOTE: ${reorderedPeople[1]} IS UP NEXT, WITH ${reorderedPeople[2]} TENTATIVELY AFTER THAT!\n\n`
-  );
-
   if (dryRun) {
     console.log("Dry run complete! (No updates performed)");
+
+    // console.log(JSON.stringify({ months, reorderedPeople }, null, 2));
     return;
   }
 

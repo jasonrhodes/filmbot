@@ -86,16 +86,24 @@ export function reorderByGreenStatus(people: Person[], months: string[]) {
       // if they are "greened", they stay at their previous index, otherwise they move "down" one spot
       person.greened ? person.index : person.index + 1
     );
-    if (placement === person.index) {
-      console.log(`${person.name}: still scheduled for ${months[placement]}`);
+    if (placement === 1) {
+      console.log(`\n${person.name}: 🎥 IT'S YOUR MONTH! 🎉🎉🎉\n`);
+    } else if (placement === 2) {
+      console.log(
+        `${person.name}: 🔒 You're locked in for next month (:hype:)\n`
+      );
+    } else if (placement === person.index) {
+      console.log(
+        `${person.name}: 🟢 still scheduled for ${months[placement]}`
+      );
     } else if (placement === person.index + 1) {
       console.log(
-        `${person.name} FAILED to watch this month and drops back a month to ${months[placement]}`
+        `${person.name}: 😢 drops back a month to ${months[placement]}`
       );
     } else if (placement < person.index) {
       const diff = person.index - placement;
       console.log(
-        `Woot! Due to being behind one or more delinquents, ${person.name} has moved up to ${months[placement]} (a ${diff} month jump!)`
+        `${person.name}: ⏫ woot! moved up to ${months[placement]} (a ${diff} month jump!)`
       );
     } else {
       console.log(
@@ -109,7 +117,7 @@ export function reorderByGreenStatus(people: Person[], months: string[]) {
   });
 
   // find a spot for the previous chooser (last spot unless those in those spots previously didn't watch)
-  const previousChoosePlacement = findEmptyIndex(reordered, people.length - 1);
+  const previousChoosePlacement = findEmptyIndex(reordered, people.length);
   reordered[previousChoosePlacement] = previousChooser.name;
 
   return reordered.filter((x) => !!x);
