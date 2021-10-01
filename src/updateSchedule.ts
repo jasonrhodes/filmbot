@@ -1,97 +1,56 @@
-import { TextFormat } from "google-spreadsheet";
-import { COLORS, FONT_FAMILY } from "./constants";
-import { initDoc } from "./lib/initDoc";
-import { iterateColumnCells } from "./lib/iterateColumnCells";
-import { getSheets } from "./lib/sheets";
-import { findAvailableIndex, getDateTitle, isGreen, zebra } from "./lib/utils";
+import { getSheetsForDoc } from "./lib/sheets";
+import {
+  getGreenStatus,
+  getNextMonthTitle,
+  reorderByGreenStatus,
+} from "./lib/utils";
+import { Person, UpdateArgs } from "./sharedTypes";
 
-interface UpdateArgs {
-  credentialsPath?: string;
-  sheetId: string;
-}
-
-export async function updateSchedule({
-  credentialsPath = process.cwd() + "/SECRETS/google-credentials.json",
-  sheetId,
-}: UpdateArgs) {
-  const creds = require(credentialsPath);
-  const doc = await initDoc(sheetId, creds);
-  const [previousMonthSheet, newMonthSheet] = await getSheets(doc);
-  const mcs: string[] = [];
-  const monthTextFormat: TextFormat = { bold: true, fontFamily: FONT_FAMILY };
-  const mcTextFormat: TextFormat = { bold: false, fontFamily: FONT_FAMILY };
-
-  // add all the months to the new sheet
-  await iterateColumnCells(
-    0,
-    previousMonthSheet,
-    newMonthSheet,
-    (prevCell, newCell, i) => {
-      newCell.textFormat = monthTextFormat;
-      newCell.value = prevCell.formattedValue;
-      if (i === 2) {
-        newCell.backgroundColor = COLORS.YELLOW;
-      } else {
-        zebra(newCell, i);
-      }
-      return newCell;
-    },
-    (prevCell, newCell, i) => {
-      const finalMonthCell = previousMonthSheet.getCell(
-        prevCell.rowIndex - 1,
-        prevCell.columnIndex
-      );
-      const addedMonth = new Date(finalMonthCell.formattedValue);
-      addedMonth.setMonth(addedMonth.getMonth() + 1);
-      const addedMonthTitle = getDateTitle(addedMonth);
-      newCell.value = addedMonthTitle;
-      newCell.textFormat = monthTextFormat;
-      zebra(newCell, i);
-    }
+export async function updateSchedule({ credentialsPath, sheetId }: UpdateArgs) {
+  const [previousMonthSheet, newMonthSheet] = await getSheetsForDoc(
+    sheetId,
+    credentialsPath
   );
 
-  // order the MCs in a local array
-  await iterateColumnCells(
-    1,
-    previousMonthSheet,
-    newMonthSheet,
-    (prevCell, newCell) => {
-      if (!isGreen(prevCell.backgroundColor)) {
-        mcs[newCell.rowIndex + 1] = prevCell.formattedValue;
-      } else {
-        const availableIndex = findAvailableIndex(mcs, newCell.rowIndex);
-        mcs[availableIndex] = prevCell.formattedValue;
-      }
-      // make sure previous month's chooser is moved to the bottom as well
-    }
-  );
+  // get previous month rows
+  const previousRows = await previousMonthSheet.getRows({
+    offset: 0,
+    limit: previousMonthSheet.rowCount,
+  });
 
-  // apply the MCs to the page in the order from the local array
-  await iterateColumnCells(
-    1,
-    previousMonthSheet,
-    newMonthSheet,
-    (prevCell, newCell, i) => {
-      newCell.value = mcs[newCell.rowIndex];
-      newCell.textFormat = mcTextFormat;
-      if (i === 2) {
-        newCell.backgroundColor = COLORS.YELLOW;
-        newCell.textFormat = { ...mcTextFormat, bold: true };
-      } else if (i === 3) {
-        newCell.backgroundColor = COLORS.GREEN;
-      } else {
-        zebra(newCell, i);
-      }
-    },
-    (prevCell, newCell, i) => {
-      const lastPicked = previousMonthSheet.getCellByA1("B2").formattedValue;
-      newCell.value = lastPicked;
-      newCell.textFormat = mcTextFormat;
-      zebra(newCell, i);
-    }
-  );
+  // get months (removing the top month that we just finished)
+  const months = previousRows.map((row) => row.Month).slice(1);
 
-  // save all changes
+  // add current month to end of month list
+  const previousFinalMonth = months[months.length - 1];
+  months.push(getNextMonthTitle(previousFinalMonth));
+
+  // get people (MCs)
+  const people = previousRows.map<Person>((row, i) => {
+    const cell = previousMonthSheet.getCell(row.rowIndex - 1, 1);
+    return {
+      name: row.MC,
+      greened: getGreenStatus(cell),
+      index: i,
+    };
+  });
+
+  // reorder MCs based on greened status
+  const reorderedMcs = reorderByGreenStatus(people, months.length - 1);
+
+  // make new rows
+  const newRows = months.map((month, i) => ({
+    Month: month,
+    MC: reorderedMcs[i],
+  }));
+
+  // add new rows to new sheet
+  newMonthSheet.addRows(newRows);
+
+  // TODO: add in placeholders for the movie title cells
+  // TODO: add formatting for all cells
+
   await newMonthSheet.saveUpdatedCells();
-  console.log("Update complete");
+
+  console.log("Update complete!");
 }

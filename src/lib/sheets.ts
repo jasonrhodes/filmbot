@@ -1,6 +1,70 @@
-import { GoogleSpreadsheet } from "google-spreadsheet";
+import {
+  GoogleSpreadsheet,
+  ServiceAccountCredentials,
+} from "google-spreadsheet";
 import { MOVIE_PICKS_RANGE, SCHEDULE_RANGE } from "../constants";
 import { formatHeader, getDateTitle } from "./utils";
+
+// export interface ServiceAccountCredentials {
+//     /**
+//      * @description
+//      * service account email address
+//      */
+//     client_email: string;
+
+//     /**
+//      * @description
+//      * service account private key
+//      */
+//     private_key: string;
+// }
+
+function checkIfServiceAccountCredentials(
+  creds: any
+): creds is ServiceAccountCredentials {
+  return (
+    creds &&
+    typeof creds.client_email === "string" &&
+    typeof creds.private_key === "string"
+  );
+}
+
+function getCredentials(
+  credentialsPath: string = process.cwd() + "/SECRETS/google-credentials.json"
+) {
+  let creds;
+  try {
+    creds = require(credentialsPath);
+  } catch (e) {
+    throw new Error(
+      `Could not require in credentials from ${credentialsPath}, could be invalid format (must be valid JSON with client_email and private_key string values) : ${e.message}`
+    );
+  }
+  if (checkIfServiceAccountCredentials(creds)) {
+    return creds;
+  }
+  throw new Error(
+    `Passed in credentials file path does not contain the required keys of "client_email" and "private_key"`
+  );
+}
+
+export async function initDoc(id: string, credentialsPath?: string) {
+  // Initialize the spreadsheet document - doc ID is the long id in the sheets URL
+  const creds = getCredentials(credentialsPath);
+  const doc = new GoogleSpreadsheet(id);
+
+  await doc.useServiceAccountAuth(creds);
+
+  await doc.loadInfo(); // loads document properties and worksheets
+  console.log("Working with Spreadsheet document", doc.title, "...");
+
+  return doc;
+}
+
+export async function getSheetsForDoc(id: string, credentialsPath?: string) {
+  const doc = await initDoc(id, credentialsPath);
+  return await getSheets(doc);
+}
 
 export async function getSheets(doc: GoogleSpreadsheet) {
   const currentMonthTitle = getDateTitle(new Date());
