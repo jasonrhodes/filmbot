@@ -8,15 +8,17 @@ First, you need to get auth sorted.
 
 ### Authentication
 
-1. You'll need a Google credentials file. I got one following these steps:
+You'll need a Google credentials file. I got one following these steps:
 
 https://theoephraim.github.io/node-google-spreadsheet/#/getting-started/authentication?id=service-account
 
-2. Create a directory called SECRETS in the root of this directory (it will be auto gitignored)
+#### Storing and accessing your credentials file
 
-3. Move your service account key file (.json) into the SECRETS directory, named google-credentials.json (it will also be auto gitignored, I promise!)
+There are several options:
 
-Note: you can also pass in the path to your json file via `--credsFile` in the CLI tool if you don't want to move it into the repo.
+- Pass in the path to your json credentials file via `--credsFile` in the CLI tool when running commands
+- Create a directory called SECRETS in the root of this directory and move your service account key file (.json) into the SECRETS directory, named google-credentials.json (everything in this directory is in .gitignore)
+- Export a system env variable called FILMBOT_JSON_CREDS_PATH that contains the absolute path to your credentials file.
 
 ### Dependencies
 
@@ -53,12 +55,4 @@ To use your cached stats file in subsequent runs:
 
 ```
 npm run update-schedule -- --sheetId="{your Google sheet ID} --use-stats-cache="./stats-cache.json"
-```
-
-### Credentials
-
-You can also store the credentials file in a different place, with a different name, if you want:
-
-```sh
-$ npm run updateSchedule -- --sheetId="{your Google sheet ID}" --credsFile="/path/to/your/key-file.json"
 ```
