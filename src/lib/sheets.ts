@@ -5,6 +5,8 @@ import {
 import { MOVIE_PICKS_RANGE, SCHEDULE_RANGE } from "../constants";
 import { formatHeader, getDateTitle } from "./utils";
 
+const JSON_CREDS_PATH = process.env.FILMBOT_JSON_CREDS_PATH || process.cwd() + "/SECRETS/google-credentials.json";
+
 // export interface ServiceAccountCredentials {
 //     /**
 //      * @description
@@ -30,7 +32,7 @@ function checkIfServiceAccountCredentials(
 }
 
 function getCredentials(
-  credentialsPath: string = process.cwd() + "/SECRETS/google-credentials.json"
+  credentialsPath: string = JSON_CREDS_PATH
 ) {
   let creds;
   try {
@@ -61,14 +63,47 @@ export async function initDoc(id: string, credentialsPath?: string) {
   return doc;
 }
 
-export async function getSheetsForDoc({
+interface GetSheetOptionsBase {
+  index?: number;
+}
+interface GetSheetOptionsByID extends GetSheetOptionsBase {
+  id: string;
+  credentialsPath?: string;
+  cachedDoc?: never;
+}
+
+interface GetSheetOptionsByCache extends GetSheetOptionsBase {
+  id?: string;
+  credentialsPath?: string;
+  cachedDoc: GoogleSpreadsheet;
+}
+
+export type GetSheetOptions = GetSheetOptionsByID | GetSheetOptionsByCache;
+
+export async function getSheetFromDoc({
+  id,
+  index = 0,
+  credentialsPath,
+  cachedDoc
+}: GetSheetOptions) {
+  const doc = cachedDoc ? cachedDoc : await initDoc(id, credentialsPath);
+  const sheet = doc.sheetsByIndex[index];
+  if (!sheet) {
+    return null;
+  }
+  console.log(`Loading sheet cells for ${sheet.title}`);
+  await sheet.loadCells([SCHEDULE_RANGE, MOVIE_PICKS_RANGE]);
+  return sheet;
+}
+
+export async function getSheetsToUpdateForDoc({
   id,
   credentialsPath,
-  dryRun,
+  dryRun = false,
 }: {
   id: string;
   credentialsPath?: string;
-  dryRun: boolean;
+  dryRun?: boolean;
 }) {
   const doc = await initDoc(id, credentialsPath);
   return await getSheets(doc, dryRun);

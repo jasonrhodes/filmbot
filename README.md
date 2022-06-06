@@ -38,7 +38,7 @@ Using this script is currently dependent on time. If the left-most tab in your s
 TODO: Make the target dates into passable args.
 
 ```sh
-$ npm run updateSchedule -- --sheetId="{your Google sheet ID}"
+$ npm run update-schedule -- --sheetId="{your Google sheet ID}"
 ```
 
 You can also store the credentials file in a different place, with a different name, if you want:

@@ -39,7 +39,7 @@ export function isGreen(color?: Color) {
 }
 
 export function getGreenStatus(cell: GoogleSpreadsheetCell) {
-  let greened;
+  let greened: boolean;
   // for some reason, trying to access cell.backgroundColor blows up sometimes as
   // "cannot access backgroundColor of undefined", even when we previously check
   // that cell is in fact defined. Using try/catch for this for now, bad idea.
@@ -49,7 +49,7 @@ export function getGreenStatus(cell: GoogleSpreadsheetCell) {
     // console.log(
     //   `Error while checking green cell color background for ${cell.formattedValue}: ${e.message}`
     // );
-    if (e.message !== "Cannot read property 'backgroundColor' of undefined") {
+    if (e.message !== "Cannot read property 'backgroundColor' of undefined" && e.message !== "Cannot read properties of undefined (reading 'backgroundColor')") {
       throw e;
     }
     greened = false;
@@ -62,7 +62,7 @@ export function getGreenStatus(cell: GoogleSpreadsheetCell) {
 }
 
 export function findEmptyIndex(
-  list: any[],
+  people: Person[],
   index: number,
   originalAttempt?: number
 ): number {
@@ -71,54 +71,26 @@ export function findEmptyIndex(
       `No empty spots available when trying to put someone at spot ${originalAttempt}`
     );
   }
-  return list[index] === undefined
+
+  // console.log("Looking for an empty index", index, originalAttempt);
+  // console.log(JSON.stringify(people, null, 2));
+  
+  return people[index] === undefined
     ? index
-    : findEmptyIndex(list, index - 1, originalAttempt || index);
+    : findEmptyIndex(people, index - 1, originalAttempt || index);
 }
 
 export function reorderByGreenStatus(people: Person[], months: string[]) {
-  const reordered = [];
-
-  const previousChooser = people.shift();
-  people.forEach((person) => {
-    const placement = findEmptyIndex(
-      reordered,
+  const reordered = people.reduce<Person[]>((_reordered, person) => {
+    // person.previousIndex = person.index;
+    person.index = findEmptyIndex(
+      _reordered,
       // if they are "greened", they stay at their previous index, otherwise they move "down" one spot
       person.greened ? person.index : person.index + 1
     );
-    if (placement === 1) {
-      console.log(`\n${person.name}: 🎥 IT'S YOUR MONTH! 🎉🎉🎉\n`);
-    } else if (placement === 2) {
-      console.log(
-        `${person.name}: 🔒 You're locked in for next month (:hype:)\n`
-      );
-    } else if (placement === person.index) {
-      console.log(
-        `${person.name}: 🟢 still scheduled for ${months[placement]}`
-      );
-    } else if (placement === person.index + 1) {
-      console.log(
-        `${person.name}: 😢 drops back a month to ${months[placement]}`
-      );
-    } else if (placement < person.index) {
-      const diff = person.index - placement;
-      console.log(
-        `${person.name}: ⏫ woot! moved up to ${months[placement]} (a ${diff} month jump!)`
-      );
-    } else {
-      console.log(
-        `Uh oh, ${person.name} moved back by more than one spot (${
-          placement - person.index
-        }), this isn't supposed to happen`
-      );
-      throw new Error("Reordering error");
-    }
-    reordered[placement] = person.name;
-  });
-
-  // find a spot for the previous chooser (last spot unless those in those spots previously didn't watch)
-  const previousChoosePlacement = findEmptyIndex(reordered, people.length);
-  reordered[previousChoosePlacement] = previousChooser.name;
+    _reordered[person.index] = person;
+    return _reordered;
+  }, []);
 
   return reordered.filter((x) => !!x);
 }
