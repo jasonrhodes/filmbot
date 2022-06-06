@@ -29,17 +29,33 @@ Once you have those, navigate to the root of this project and run `npm install` 
 1. Should have 2 columns: "Month" and "MC"
 2. Should have tabs representing months, in M YYYY format and in l-r descending order (e.g. June 2021, May 2021, June 2021)
 
-More details TBD
+## update-schedule
 
-### Using the script
+_Note:_ Using this script is currently dependent on time. If the left-most tab in your sheet is labelled "Sepember 2021" and you run it in Sept of 2021, it will do nothing. You'll have to wait until your local time is in Oct of 2021 for it to run.
 
-Using this script is currently dependent on time. If the left-most tab in your sheet is labelled "Sepember 2021" and you run it in Sept of 2021, it will do nothing. You'll have to wait until your local time is in Oct of 2021 for it to run.
-
-TODO: Make the target dates into passable args.
+### Usage
 
 ```sh
 $ npm run update-schedule -- --sheetId="{your Google sheet ID}"
 ```
+
+Use `--dry-run` to print output without updating any files.
+
+### Stats Analysis
+
+Update schedule will also do stats analysis of the Google Worksheet. This can take some time because it has to interact with the Google sheets API many times to get all of the stats from the remote worksheet. You can save the retrieved stats to a local cache file:
+
+```
+npm run update-schedule -- --sheetId="{your Google sheet ID} --cache-stats
+```
+
+To use your cached stats file in subsequent runs:
+
+```
+npm run update-schedule -- --sheetId="{your Google sheet ID} --use-stats-cache="./stats-cache.json"
+```
+
+### Credentials
 
 You can also store the credentials file in a different place, with a different name, if you want:
 
