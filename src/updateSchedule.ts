@@ -39,6 +39,10 @@ async function writeStatsToCache(stats: WatchStats[], path: string) {
   })
 }
 
+function logSectionHeader(header: string, emoji: string) {
+  console.log(`\n=== ${emoji} ${emoji} ${emoji} ${header} ${emoji} ${emoji} ${emoji} ===\n`);
+}
+
 export async function updateSchedule({
   credentialsPath,
   sheetId,
@@ -78,11 +82,17 @@ export async function updateSchedule({
 
   // get people (MCs)
   const allPeople = previousRows
-    .map<PeopleMapResult>((row, i) => {
-      const cell = previousMonthSheet.getCell(row.rowIndex - 1, 1);
-      const statsForUser = stats.find((user) => user.Username === row.MC);
+    .map<PeopleMapResult>(({ MC, rowIndex }, i) => {
+      const stringMC = typeof MC === "string" ? MC : '';
+      const cell = previousMonthSheet.getCell(rowIndex - 1, 1);
+      const statsForUser = stats.find((user) => user.Username.toLowerCase() === stringMC.toLowerCase());
+
+      if (!statsForUser) {
+        console.log(`Warning: no user stats found for ${MC}, this shouldn't happen`);
+      }
+
       return {
-        name: row.MC,
+        name: MC,
         greened: getGreenStatus(cell),
         stats: statsForUser,
         previousIndex: i - 1
@@ -98,44 +108,42 @@ export async function updateSchedule({
     index: i
   }));
   
-  // console.log("dump indexed people", JSON.stringify(indexedPeople, null, 2));
-
-  console.log("");
+  const accidentallyDropped = allPeople.filter(p => !p.stats);
+  logSectionHeader("ACCIDENTALLY DROPPED USERS", "🤦‍♂️");
+  accidentallyDropped.forEach(person => console.log(person.name));
+  if (accidentallyDropped.length === 0) {
+    console.log("Nobody, phew (Psim you're safe … for now)");
+  }
   
   const inactive = stats.filter(user => !user['Active']);
-
-  // console.log("INACTIVES", JSON.stringify(inactive.map(({ Username }) => Username), null, 2));
-  // console.log("PEEPS", JSON.stringify(allPeople.map(({ name }) => name), null, 2));
-
   const newlyDropped = inactive.filter(inactivePerson => allPeople.find(currentPerson => inactivePerson['Username'].toLowerCase() === currentPerson.name.toLowerCase()));
-  console.log("🚨 🚨 🚨");
-  console.log("Newly Dropped Users:\n");
+
+  logSectionHeader("NEWLY DROPPED USERS", "🚨");
   newlyDropped.forEach(stat => console.log(
     stat.Username,
     `Streak: ${stat['Current Streak']} ${stat['Current Streak Type']}`,
     '/',
     `Total Watches: ${stat['Total Greens']}`
   ));
+  if (newlyDropped.length === 0) {
+    console.log("Nobody! Keep watching, everyone!");
+  }
 
-  console.log("");
-
-  const emeritus = inactive.filter(inactivePerson => !allPeople.find(currentPerson => inactivePerson['Username'].toLowerCase() === currentPerson.name.toLowerCase()));
-  console.log("👋 👋 👋");
-  console.log("Film Club Emeriti:\n");
-  emeritus.forEach(stat => console.log(
-    stat.Username,
-    `Tenure: ${stat['Tenure']}`,
-    '/',
-    `Total Watches: ${stat['Total Greens']}`
-  ));
-
-  console.log("");
+  // Meh, let's not print the emeritus list
+  
+  // const emeritus = inactive.filter(inactivePerson => !allPeople.find(currentPerson => inactivePerson['Username'].toLowerCase() === currentPerson.name.toLowerCase()));
+  // logSectionHeader("Film Club Emeriti", "👋");
+  // emeritus.forEach(stat => console.log(
+  //   stat.Username,
+  //   `Tenure: ${stat['Tenure']}`,
+  //   '/',
+  //   `Total Watches: ${stat['Total Greens']}`
+  // ));
 
   const inDanger = stats.filter(user => user['In Danger']);
-  console.log("⚠️ ⚠️ ⚠️");
-  console.log("In danger of dropping in the next month or two\n");
+  logSectionHeader("IN DANGER", "😬");
   if (inDanger.length === 0) {
-    console.log("Nobody! Good job, everyone!")
+    console.log("Nobody! You love to see it.")
   } else {
     inDanger.forEach(stat => console.log(
       stat.Username,
@@ -143,13 +151,10 @@ export async function updateSchedule({
     ));
   }
 
-  console.log(`\nREORDERING THOSE WHO REMAIN...\n`);
+  logSectionHeader("REORDERING THOSE WHO REMAIN", "🥁");
 
   // reorder MCs based on greened status
   const reorderedPeople = reorderByGreenStatus(indexedPeople, months);
-
-  // console.log("Finished reordering people");
-  // console.log(JSON.stringify(reorderedPeople, null, 2));
 
   reorderedPeople.forEach((person, i) => {
     const monthName = months[i];
@@ -205,14 +210,8 @@ export async function updateSchedule({
       console.log("\n");
   });
 
-  // const l = reorderedPeople.length;
-  // const lp = reorderedPeople[l - 1];
-  // console.log("DEBUG", l, lp.name, lp.index);
-
   if (opts.dryRun) {
     console.log("Dry run complete! (No updates performed)");
-
-    // console.log(JSON.stringify({ months, reorderedPeople }, null, 2));
     return;
   }
 
