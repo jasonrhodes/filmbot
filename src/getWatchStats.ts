@@ -1,13 +1,9 @@
-import { GoogleSpreadsheet } from "google-spreadsheet";
+import { GoogleSpreadsheet, GoogleSpreadsheetWorksheet } from "google-spreadsheet";
 import { getSheetFromDoc, initDoc } from "./lib/sheets";
-import {
-  getGreenStatus
-} from "./lib/utils";
+import { getGreenStatus } from "./lib/utils";
 import { StatsArgs, WatchStats } from "./sharedTypes";
-
 import axios from "axios";
-
-
+import { log } from "./lib/log";
 
 interface User {
   username: string;
@@ -24,6 +20,7 @@ interface ProcessSheetOptions {
   tries?: number;
   includeCurrentMonth?: boolean;
   completed: number[];
+  onLoad?: (sheet: GoogleSpreadsheetWorksheet) => void;
 }
 
 function wait(ms) {
@@ -49,14 +46,15 @@ async function processSheet({
   includeCurrentMonth = false, 
   users = [], 
   tries = 1, 
-  completed = [] 
+  completed = [],
+  onLoad
 }: ProcessSheetOptions): Promise<{ users: User[], completed: number[] }> {
   const finalIndex = includeCurrentMonth ? 0 : 1;
-  // console.log(`Include current month? ${includeCurrentMonth}, ${index} < ${finalIndex} ?`);
+  // log(`Include current month? ${includeCurrentMonth}, ${index} < ${finalIndex} ?`);
   if (index < finalIndex) {
     return { users, completed };
   }
-  const sheet = await getSheetFromDoc({ cachedDoc: doc, index });
+  const sheet = await getSheetFromDoc({ cachedDoc: doc, index, onLoad });
   
   if (!sheet) {
     throw new Error(`Sheet missing for index ${index}`);
@@ -65,13 +63,13 @@ async function processSheet({
   const rows = await sheet.getRows();
 
   if (!rows[1] || typeof rows[1] !== "object" || !rows[1].MC || !rows[1].Month) {
-    console.log(`Skipping invalid sheet ${sheet.title}`);
-    return await processSheet({ index: index - 1, doc: doc, users, completed, includeCurrentMonth });
+    log(`✓ Skipping invalid sheet ${sheet.title}`);
+    return await processSheet({ index: index - 1, doc: doc, onLoad, users, completed, includeCurrentMonth });
   }
 
-  // console.log("Processing rows", rows.length, "for", sheet.title);
+  // log("Processing rows", rows.length, "for", sheet.title);
 
-  // console.log(`Begin mutation: ${sheet.title} | ${index}`);
+  // log(`Begin mutation: ${sheet.title} | ${index}`);
   
   for (let i = 0; i < rows.length; i++) {
     const { MC } = rows[i];
@@ -94,7 +92,7 @@ async function processSheet({
       if (!found.months.has(thisMonthState)) {
         found.months.add(thisMonthState);
       } else {
-        // console.log(`Skipping duplicate entry for ${MC} + ${thisMonthState}`);
+        // log(`Skipping duplicate entry for ${MC} + ${thisMonthState}`);
       }
       
     }
@@ -109,22 +107,22 @@ async function processSheet({
     }
   });
 
-  // console.log(`End mutation: ${sheet.title} | ${index}`);
+  // log(`End mutation: ${sheet.title} | ${index}`);
 
   completed.push(index);
 
   const nextIndex = index - 1;
 
   try {
-    // console.log(`Initial try to process next month for tab index: ${index - 1}`)
-    return await processSheet({ index: nextIndex, doc: doc, users, completed, includeCurrentMonth });
+    // log(`Initial try to process next month for tab index: ${index - 1}`)
+    return await processSheet({ index: nextIndex, doc: doc, onLoad, users, completed, includeCurrentMonth });
   } catch (error) {
     if (axios.isAxiosError(error) && error.response.status === 429 && tries <= 5) {
       const pause = 10 * tries * 1.2;
-      // console.log(`Rate limit reached (${tries} time(s)), waiting ${pause} seconds to try again for try ${tries} for month ${sheet.title} | ${index}...`);
+      // log(`Rate limit reached (${tries} time(s)), waiting ${pause} seconds to try again for try ${tries} for month ${sheet.title} | ${index}...`);
       await wait(pause * 1000);
-      // console.log(`Trying again (try ${tries}) now for ${sheet.title} | ${index}`);
-      return await processSheet({ index: nextIndex, includeCurrentMonth, doc: doc, users, tries: tries + 1, completed });
+      // log(`Trying again (try ${tries}) now for ${sheet.title} | ${index}`);
+      return await processSheet({ index: nextIndex, onLoad, includeCurrentMonth, doc: doc, users, tries: tries + 1, completed });
     } else {
       throw error;
     }
@@ -134,26 +132,13 @@ async function processSheet({
 export async function getWatchStats({
   sheetId,
   includeCurrentMonth = false,
-  months
+  months,
+  onLoad
 }: StatsArgs) {
-
-  console.log('gws 1');
-
   const doc = await initDoc(sheetId);
-
-  console.log('gws 2');
-
   const sheetCount = doc.sheetsByIndex.length;
-
-  console.log('gws 3');
-
   const monthsToProcess = months ? months : sheetCount - 1;
-
-  console.log('gws 4');
-
-  const { users } = await processSheet({ doc, includeCurrentMonth, index: monthsToProcess, completed: [] });
-
-  console.log('gws 5');
+  const { users } = await processSheet({ doc, onLoad, includeCurrentMonth, index: monthsToProcess, completed: [] });
 
   const processed = users.map<WatchStats>((user) => {
     const monthArray = Array.from(user.months);

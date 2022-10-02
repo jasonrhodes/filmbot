@@ -7,6 +7,7 @@ import {
   reorderByGreenStatus,
 } from "./lib/utils";
 import { Person, UpdateArgs, WatchStats } from "./sharedTypes";
+import { log } from "./lib/log";
 
 type PeopleMapResult = Omit<Person, 'index'> | null;
 
@@ -43,14 +44,28 @@ function logSectionHeader(header: string, emoji: string) {
   console.log(`\n=== ${emoji} ${emoji} ${emoji} ${header} ${emoji} ${emoji} ${emoji} ===\n`);
 }
 
+function printProgress(value) {
+  process.stdout.clearLine(0);
+  process.stdout.cursorTo(0);
+  process.stdout.write(`[${(new Date()).toISOString()}] ${value}`);
+}
+
 export async function updateSchedule({
   sheetId,
   opts = {}
 }: UpdateArgs) {
-  console.log('0 ok');
-  const stats = opts.useStatsCache ? await getStatsFromCache(opts.useStatsCache) : await getWatchStats({ sheetId, includeCurrentMonth: true });
+  const initialMessage = opts.useStatsCache ? 'Retrieving stats from cache...' : 'Starting to process stat sheets...';
+  printProgress(initialMessage);
 
-  console.log('0.1 ok');
+  const stats = opts.useStatsCache 
+    ? await getStatsFromCache(opts.useStatsCache) 
+    : await getWatchStats({
+      sheetId, 
+      includeCurrentMonth: true,
+      onLoad: (sheet) => printProgress(`Processing sheet ${sheet.title}...`)
+    });
+  
+  printProgress('✓ Finished processing stat sheets\n');
   
   if (opts.cacheStats) {
     writeStatsToCache(stats, './stats-cache.json');
@@ -58,19 +73,15 @@ export async function updateSchedule({
 
   // Wait 1m to make sure watch stats rate limiting has passed
   if (!opts.useStatsCache) {
-    console.log("Pausing analysis to wait for rate-limiting...");
+    log("Pausing analysis to wait for rate-limiting...");
     await new Promise((resolve) => setTimeout(resolve, 60000));
-    console.log("Restarting analysis");
+    log("Restarting analysis...");
   }
-
-  console.log('1 ok');
 
   const [previousMonthSheet, newMonthSheet] = await getSheetsToUpdateForDoc({
     id: sheetId,
     dryRun: opts.dryRun
   });
-
-  console.log('2 ok');
 
   // get previous month rows
   const previousRows = await previousMonthSheet.getRows({
@@ -93,7 +104,7 @@ export async function updateSchedule({
       const statsForUser = stats.find((user) => user.Username.toLowerCase() === stringMC.toLowerCase());
 
       if (!statsForUser) {
-        console.log(`Warning: no user stats found for ${MC}, this shouldn't happen`);
+        log(`Warning: no user stats found for ${MC}, this shouldn't happen`);
       }
 
       return {
@@ -115,7 +126,7 @@ export async function updateSchedule({
   
   const accidentallyDropped = allPeople.filter(p => !p.stats);
   logSectionHeader("ACCIDENTALLY DROPPED USERS", "🤦‍♂️");
-  accidentallyDropped.forEach(person => console.log(person.name));
+  accidentallyDropped.forEach(person => log(person.name));
   if (accidentallyDropped.length === 0) {
     console.log("Nobody, phew (Psim you're safe … for now)");
   }
@@ -138,7 +149,7 @@ export async function updateSchedule({
   
   // const emeritus = inactive.filter(inactivePerson => !allPeople.find(currentPerson => inactivePerson['Username'].toLowerCase() === currentPerson.name.toLowerCase()));
   // logSectionHeader("Film Club Emeriti", "👋");
-  // emeritus.forEach(stat => console.log(
+  // emeritus.forEach(stat => log(
   //   stat.Username,
   //   `Tenure: ${stat['Tenure']}`,
   //   '/',
@@ -216,7 +227,7 @@ export async function updateSchedule({
   });
 
   if (opts.dryRun) {
-    console.log("Dry run complete! (No updates performed)");
+    log("✓ Dry run complete! (No updates performed)");
     return;
   }
 
@@ -238,5 +249,5 @@ export async function updateSchedule({
 
   await newMonthSheet.saveUpdatedCells();
 
-  console.log("Update complete!");
+  log("✓ Update complete!");
 }

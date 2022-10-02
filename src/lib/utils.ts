@@ -6,6 +6,7 @@ import {
 } from "google-spreadsheet";
 import { COLORS, FONT_FAMILY } from "../constants";
 import { Person } from "../sharedTypes";
+import { log } from "./log";
 
 export function formatHeader(
   sheet: GoogleSpreadsheetWorksheet,
@@ -46,7 +47,7 @@ export function getGreenStatus(cell: GoogleSpreadsheetCell) {
   try {
     greened = isGreen(cell.backgroundColor);
   } catch (e) {
-    // console.log(
+    // log(
     //   `Error while checking green cell color background for ${cell.formattedValue}: ${e.message}`
     // );
     if (e.message !== "Cannot read property 'backgroundColor' of undefined" && e.message !== "Cannot read properties of undefined (reading 'backgroundColor')") {
@@ -72,8 +73,8 @@ export function findEmptyIndex(
     );
   }
 
-  // console.log("Looking for an empty index", index, originalAttempt);
-  // console.log(JSON.stringify(people, null, 2));
+  // log("Looking for an empty index", index, originalAttempt);
+  // log(JSON.stringify(people, null, 2));
   
   return people[index] === undefined
     ? index

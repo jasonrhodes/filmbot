@@ -12,8 +12,6 @@ type CLIArgs = {
 
 const argv = yargs(hideBin(process.argv)).argv as unknown as CLIArgs;
 
-console.log("Args received:", JSON.stringify(argv, null, 2));
-
 if (!argv.sheetId) {
   console.error("sheetId is a required parameter");
   process.exit();
@@ -26,7 +24,6 @@ export async function print() {
   const output = argv.output || `./reports/stats-${d.toISOString()}.csv`
 
   const stats = await getWatchStats({
-    credentialsPath: argv.credsPath,
     sheetId: argv.sheetId,
     months: argv.months
   });

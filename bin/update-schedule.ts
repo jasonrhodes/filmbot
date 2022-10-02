@@ -10,18 +10,13 @@ type CLIArgs = {
   useStatsCache?: string;
 };
 
-console.log('-1 ok');
-
 const argv = yargs(hideBin(process.argv)).argv as unknown as CLIArgs;
-
 const sheetId = process.env.GOOGLE_SHEET_ID ? process.env.GOOGLE_SHEET_ID : argv.sheetId;
 
 if (!sheetId) {
   console.error("sheetId is a required parameter");
   process.exit();
 }
-
-console.log('-1b ok');
 
 updateSchedule({
   sheetId,

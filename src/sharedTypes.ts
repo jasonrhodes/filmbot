@@ -1,3 +1,5 @@
+import { GoogleSpreadsheetWorksheet } from "google-spreadsheet";
+
 export interface SheetArgs {
   sheetId: string;
 }
@@ -14,6 +16,7 @@ export interface UpdateArgs extends SheetArgs {
 export interface StatsArgs extends SheetArgs {
   months?: number;
   includeCurrentMonth?: boolean;
+  onLoad?: (sheet: GoogleSpreadsheetWorksheet) => void;
 }
 
 export type StreakType = "watches" | "misses";
