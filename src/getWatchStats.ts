@@ -132,16 +132,28 @@ async function processSheet({
 }
 
 export async function getWatchStats({
-  credentialsPath,
   sheetId,
   includeCurrentMonth = false,
   months
 }: StatsArgs) {
 
-  const doc = await initDoc(sheetId, credentialsPath);
+  console.log('gws 1');
+
+  const doc = await initDoc(sheetId);
+
+  console.log('gws 2');
+
   const sheetCount = doc.sheetsByIndex.length;
+
+  console.log('gws 3');
+
   const monthsToProcess = months ? months : sheetCount - 1;
+
+  console.log('gws 4');
+
   const { users } = await processSheet({ doc, includeCurrentMonth, index: monthsToProcess, completed: [] });
+
+  console.log('gws 5');
 
   const processed = users.map<WatchStats>((user) => {
     const monthArray = Array.from(user.months);

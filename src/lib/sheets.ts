@@ -3,59 +3,25 @@ import {
   ServiceAccountCredentials,
 } from "google-spreadsheet";
 import { MOVIE_PICKS_RANGE, SCHEDULE_RANGE } from "../constants";
+import { getServiceAccountCredentials } from "./getServiceAccountCredentials";
 import { formatHeader, getDateTitle } from "./utils";
 
 const JSON_CREDS_PATH = process.env.FILMBOT_JSON_CREDS_PATH || process.cwd() + "/SECRETS/google-credentials.json";
 
-// export interface ServiceAccountCredentials {
-//     /**
-//      * @description
-//      * service account email address
-//      */
-//     client_email: string;
-
-//     /**
-//      * @description
-//      * service account private key
-//      */
-//     private_key: string;
-// }
-
-function checkIfServiceAccountCredentials(
-  creds: any
-): creds is ServiceAccountCredentials {
-  return (
-    creds &&
-    typeof creds.client_email === "string" &&
-    typeof creds.private_key === "string"
-  );
-}
-
-function getCredentials(
-  credentialsPath: string = JSON_CREDS_PATH
-) {
-  let creds;
-  try {
-    creds = require(credentialsPath);
-  } catch (e) {
-    throw new Error(
-      `Could not require in credentials from ${credentialsPath}, could be invalid format (must be valid JSON with client_email and private_key string values) : ${e.message}`
-    );
-  }
-  if (checkIfServiceAccountCredentials(creds)) {
-    return creds;
-  }
-  throw new Error(
-    `Passed in credentials file path does not contain the required keys of "client_email" and "private_key"`
-  );
-}
-
-export async function initDoc(id: string, credentialsPath?: string) {
+export async function initDoc(id: string) {
+  console.log('init 0');
   // Initialize the spreadsheet document - doc ID is the long id in the sheets URL
-  const creds = getCredentials(credentialsPath);
+  const creds = getServiceAccountCredentials();
+
+  console.log('init 1');
+
   const doc = new GoogleSpreadsheet(id);
 
+  console.log('init 2');
+
   await doc.useServiceAccountAuth(creds);
+
+  console.log('init 3');
 
   await doc.loadInfo(); // loads document properties and worksheets
   console.log("Working with Spreadsheet document", doc.title, "...");
@@ -68,13 +34,11 @@ interface GetSheetOptionsBase {
 }
 interface GetSheetOptionsByID extends GetSheetOptionsBase {
   id: string;
-  credentialsPath?: string;
   cachedDoc?: never;
 }
 
 interface GetSheetOptionsByCache extends GetSheetOptionsBase {
   id?: string;
-  credentialsPath?: string;
   cachedDoc: GoogleSpreadsheet;
 }
 
@@ -83,10 +47,9 @@ export type GetSheetOptions = GetSheetOptionsByID | GetSheetOptionsByCache;
 export async function getSheetFromDoc({
   id,
   index = 0,
-  credentialsPath,
   cachedDoc
 }: GetSheetOptions) {
-  const doc = cachedDoc ? cachedDoc : await initDoc(id, credentialsPath);
+  const doc = cachedDoc ? cachedDoc : await initDoc(id);
   const sheet = doc.sheetsByIndex[index];
   if (!sheet) {
     return null;
@@ -98,14 +61,12 @@ export async function getSheetFromDoc({
 
 export async function getSheetsToUpdateForDoc({
   id,
-  credentialsPath,
   dryRun = false,
 }: {
   id: string;
-  credentialsPath?: string;
   dryRun?: boolean;
 }) {
-  const doc = await initDoc(id, credentialsPath);
+  const doc = await initDoc(id);
   return await getSheets(doc, dryRun);
 }
 

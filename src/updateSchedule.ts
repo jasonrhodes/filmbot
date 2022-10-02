@@ -44,12 +44,14 @@ function logSectionHeader(header: string, emoji: string) {
 }
 
 export async function updateSchedule({
-  credentialsPath,
   sheetId,
   opts = {}
 }: UpdateArgs) {
+  console.log('0 ok');
   const stats = opts.useStatsCache ? await getStatsFromCache(opts.useStatsCache) : await getWatchStats({ sheetId, includeCurrentMonth: true });
 
+  console.log('0.1 ok');
+  
   if (opts.cacheStats) {
     writeStatsToCache(stats, './stats-cache.json');
   }
@@ -61,11 +63,14 @@ export async function updateSchedule({
     console.log("Restarting analysis");
   }
 
+  console.log('1 ok');
+
   const [previousMonthSheet, newMonthSheet] = await getSheetsToUpdateForDoc({
     id: sheetId,
-    credentialsPath,
     dryRun: opts.dryRun
   });
+
+  console.log('2 ok');
 
   // get previous month rows
   const previousRows = await previousMonthSheet.getRows({

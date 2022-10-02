@@ -6,3 +6,4 @@ reports
 *.log
 *cache.json
 .DS_Store
+.env

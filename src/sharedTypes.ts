@@ -1,6 +1,5 @@
 export interface SheetArgs {
   sheetId: string;
-  credentialsPath?: string;
 }
 
 export interface UpdateArgs extends SheetArgs {
